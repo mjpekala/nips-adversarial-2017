@@ -14,7 +14,7 @@ Before running, you will have to download the associated checkpoint files and pl
 
 ## Brief Discussion
 
-On the attack side, this code is nothing more than a straightforward ensemble attack against the three networks known to be included as baselines (and potentially as part of some defenses).  This is not a particular sophisticated or interesting approach; however, it was used because (a) of the stringent time requirement which precluded more computationally expensive methods and (b) we were very short on time at the end due to some issues with our original (keras-based) approach.
+On the attack side, this code is nothing more than a straightforward ensemble attack against the three networks known to be included as baselines (and potentially as part of some defenses).  The untargeted attack is just a targeted attack against randomly selected labels.  This is not a particular sophisticated or interesting approach; however, it was used because (a) of the stringent time requirement which precluded more computationally expensive methods and (b) we were very short on time at the end due to some issues with our original (keras-based) approach.
 
 On the defense side, we use a simple two model ensemble with some additive Gaussian noise.  Again, this was not the approach we originally envisioned; however, time constraints led us to set aside our more ambitious program for something modest that should hopefully run in the time required and work well enough against weak attacks.
 
