@@ -26,7 +26,7 @@ It is not clear as of this writing that our codes will run successfully on the r
 
 Note also the software and comments do not reflect our usual standards - we were in a bit of a hurry at the end.
 
-The code in this repository is a copy of code from an internal (private) repository we were using during the competition. The latest version of all files should be here; however, if you find any missing or out-of-date files please contact the author.
+The code in this repository is a copy of code from an internal (private) repository we were using during the competition. The latest version of all files should be here; however, if you find anything missing or out-of-date please contact the author.
 
 <sub>
 THE SOFTWARE AND ITS DOCUMENTATION ARE PROVIDED AS IS AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES WHATSOEVER. ALL WARRANTIES INCLUDING, BUT NOT LIMITED TO, PERFORMANCE, MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT ARE HEREBY DISCLAIMED. USERS ASSUME THE ENTIRE RISK AND LIABILITY OF USING THE SOFTWARE. USERS ARE ADVISED TO TEST THE SOFTWARE THOROUGHLY BEFORE RELYING ON IT. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY DAMAGES WHATSOEVER, INCLUDING, WITHOUT LIMITATION, ANY LOST PROFITS, LOST SAVINGS OR OTHER INCIDENTAL OR CONSEQUENTIAL DAMAGES, ARISING OUT OF THE USE OR INABILITY TO USE THE SOFTWARE.
