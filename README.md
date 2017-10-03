@@ -2,11 +2,12 @@
 
 Codes for the NIPS 2017 adversarial example competition.
 
-Note this was joint work by Mike Pekala, Neil Fendley and I-Jeng Wang.
+Note this code represents joint work by Mike Pekala, Neil Fendley and I-Jeng Wang.
+
 
 ## Quick Start
 
-See the Makefile for examples of how to run things.  You will have to download checkpoint files and place them in the Weights directory.  You will also have to convert the namespace for the adversarially trained inceptionV3 weights (provided by competition organizers) so that they do not clash with the namespace of "vanilla" inceptionV3.  
+See the Makefile for examples of how to run things.  You will have to download the associated checkpoint files and place them in the Weights directory.  You will also have to convert the namespace for the adversarially trained inceptionV3 weights (which was provided by competition organizers) so that it does not clash with the namespace of "vanilla" inceptionV3.  
 
 ## Disclaimer
 
