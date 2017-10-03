@@ -2,7 +2,7 @@
 
 Codes for the NIPS 2017 adversarial example competition.
 
-Note this software represents joint work by Mike Pekala, Neil Fendley and I-Jeng Wang.
+This software represents joint work by Mike Pekala, Neil Fendley and I-Jeng Wang.
 
 
 ## Quick Start
