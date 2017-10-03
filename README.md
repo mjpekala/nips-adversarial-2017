@@ -7,14 +7,15 @@ Note this software represents joint work by Mike Pekala, Neil Fendley and I-Jeng
 
 ## Quick Start
 
-See the Makefile for examples of how to run things.  Note that this repo houses the code for all three submissions (attack, targeted-attack, and defense).
+See the Makefile for examples of how to run things.  Note that this repo houses the code for all three contests (attack, targeted-attack, and defense).
 
 Before running, you will have to download the associated checkpoint files and place them in the Weights directory.  You will also have to convert the namespace for the adversarially trained inceptionV3 weights (which was provided by competition organizers) so that it does not clash with the namespace of "vanilla" inceptionV3.  
 
 
 ## Brief Discussion
 
-On the attack side, this code is nothing more than a straightforward ensemble attack against the three networks known to be included as baselines (and potentially as part of some defenses).  The untargeted attack is just a targeted attack against randomly selected labels.  This is not a particular sophisticated or interesting approach; however, it was used because (a) of the stringent time requirement which precluded more computationally expensive methods and (b) we were very short on time at the end due to some issues with our original (keras-based) approach.
+On the attack side, this code is nothing more than a straightforward ensemble attack against the three networks known to be included as baselines (and potentially as part of some defenses).  The untargeted attack is just a targeted attack against randomly selected labels.  This is not a particular sophisticated or interesting approach; however, it was used because (a) of the stringent time requirement which precluded more computationally expensive methods and (b) we were very short on development/calendar time at the end due to some issues with our original (keras-based) approach.
+There is some strategy involved in balancing which networks to put in the ensemble; more models (or models with Gaussian noise) incur higher computation.  Ultimately, the uncertainty in evaluation platform runtime and the "no box" nature of the defense led to this very conservative approach.    With more runtime I would have at least included some of the noisy models in the attack, and probably a few other networks (all of which can be done easily with the existing code).
 
 On the defense side, we use a simple two model ensemble with some additive Gaussian noise.  Again, this was not the approach we originally envisioned; however, time constraints led us to set aside our more ambitious program for something modest that should hopefully run in the time required and work well enough against weak attacks.
 
