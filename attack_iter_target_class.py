@@ -1,7 +1,8 @@
-"""Implementation of sample attack.
+"""  Adversarial attacks (both targeted and non-targeted).
 
- We fell back to using a variant of a baseline attack due to evaluation issues with our 
- original Keras codes...
+ We originally started with custom codes, fell back to a baseline example 
+ to avoid issues with the competition evaluation platform, and then
+ eventually re-implemented (quick and dirty) the optimization codes.  
 """
 
 # https://stackoverflow.com/questions/41990014/load-multiple-models-in-tensorflow
@@ -26,10 +27,12 @@ import tensorflow as tf
 from tensorflow.contrib.slim.nets import inception
 from tensorflow.contrib.slim.nets import resnet_v2
 
-import ens_adv_inception_resnet_v2.inception_resnet_v2 as ir
+import models.inception_resnet_v2 as ir
 
-import classifiers
+
 import ell_infty_attacks as eia
+import classifiers
+from classifiers import NETWORKS, NOISY_NETWORKS, VERY_NOISY_NETWORKS
 
 
 slim = tf.contrib.slim
@@ -68,10 +71,13 @@ tf.flags.DEFINE_string(
     'target_model', '', 'Optional - which network to attack if only one.')
 
 tf.flags.DEFINE_integer(
-    'debug', 1, 'Optional debugging outputs.  TURN OFF IF RUNTIME IS LIMITED!')
+    'debug', 0, 'Optional debugging outputs.  TURN OFF IF RUNTIME IS LIMITED!')
 
 FLAGS = tf.flags.FLAGS
 
+
+
+#----------------------------------------------------------------------
 
 def load_target_class(input_dir):
   """Loads target classes."""
@@ -145,23 +151,15 @@ def save_images(images, filenames, output_dir):
 
 
 
-def analyze_attacks(clean_predictions, target_predictions=None):
-  """  Detailed performance metrics for targeted attacks.
+def analyze_attacks(networks_to_use, clean_predictions, target_predictions=None):
+  """  Detailed performance metrics for attacks.  This is for debugging only.
   """
 
-  # the models we'll use for prediction/analysis
-  predictors = [ 
-                 classifiers.InceptionV3('InceptionV3', './Weights/inception_v3.ckpt'),
-                 classifiers.ResnetV2('resnet_v2_101', './Weights/resnet_v2_101.ckpt'), 
-                 classifiers.InceptionV3('Adv-InceptionV3', './Weights/InceptionV3-adv.ckpt'),
-                 classifiers.AdvResnetV2InceptionV3('InceptionResnetV2', './ens_adv_inception_resnet_v2/ens_adv_inception_resnet_v2.ckpt'),
-               ]
-
-  all_files = clean_predictions.keys(); all_files.sort()
+  all_files = [x for x in clean_predictions.keys()];  all_files.sort()
 
   y0 = np.zeros((len(all_files),1), np.int32)
   yt = np.zeros(y0.shape, dtype=y0.dtype)
-  y_hat_all = np.zeros((len(all_files), len(predictors)), np.int32)
+  y_hat_all = np.zeros((len(all_files), len(networks_to_use)), np.int32)
 
   #
   # column one is prediction on clean image by some baseline classifier
@@ -173,7 +171,7 @@ def analyze_attacks(clean_predictions, target_predictions=None):
   #
   # predictions on AE
   #
-  for m_idx, model in enumerate(predictors):
+  for m_idx, model in enumerate(networks_to_use):
     files, y_hat = model.predict_all_images(FLAGS.output_dir)
     y_hat = np.argmax(y_hat, axis=1)
     tmp_dict = { files[ii] : y_hat[ii] for ii in range(len(files))}
@@ -184,7 +182,7 @@ def analyze_attacks(clean_predictions, target_predictions=None):
   #
   # performance
   #
-  print([p.name for p in predictors])
+  print([p.name for p in networks_to_use])
   print(np.concatenate([y0, yt, y_hat_all], axis=1))
 
   print('[metrics]:  Number of changed decisions for each classifier')
@@ -344,7 +342,7 @@ def _iterative_fast_gradient_attack(ensemble, eps, alpha, num_iter, tic=time.tim
   if 'resnet_v2_101' in ensemble:
       savers.append((tf.train.Saver(slim.get_model_variables(scope='resnet_v2_101')), './Weights/resnet_v2_101.ckpt'))
   if 'InceptionResnetV2' in ensemble:
-      savers.append((tf.train.Saver(slim.get_model_variables(scope='InceptionResnetV2')), './ens_adv_inception_resnet_v2/ens_adv_inception_resnet_v2.ckpt'))
+      savers.append((tf.train.Saver(slim.get_model_variables(scope='InceptionResnetV2')), './Weights/ens_adv_inception_resnet_v2.ckpt'))
   if 'Adv-InceptionV3' in ensemble:
       savers.append((tf.train.Saver(slim.get_model_variables(scope='Adv-InceptionV3')), './Weights/InceptionV3-adv.ckpt'))
 
@@ -357,7 +355,7 @@ def _iterative_fast_gradient_attack(ensemble, eps, alpha, num_iter, tic=time.tim
 # main functions for various attack types
 #-------------------------------------------------------------------------------
 
-def main_fgsm_attack(all_images_target_class):
+def main_fgsm_attack(all_images_target_class, is_targeted):
   """ Runs an iterative attack against input images.
   """
   # Images for inception classifier are normalized to be in [-1, 1] interval,
@@ -366,7 +364,9 @@ def main_fgsm_attack(all_images_target_class):
   eps = 2.0 * FLAGS.max_epsilon / 255.0
   alpha = 2.0 * FLAGS.iter_alpha / 255.0
   batch_shape = [FLAGS.batch_size, FLAGS.image_height, FLAGS.image_width, 3]
-  tic = time.time()
+
+  if not is_targeted:
+    alpha *= -1
 
   # which model(s) to attack
   if len(FLAGS.target_model):
@@ -376,6 +376,7 @@ def main_fgsm_attack(all_images_target_class):
     #ensemble = ['InceptionV3', 'resnet_v2_101', 'InceptionResnetV2', 'Adv-InceptionV3']
     ensemble = ['InceptionV3', 'InceptionResnetV2', 'Adv-InceptionV3']
 
+  tic = time.time()
 
   with tf.Graph().as_default():
     # setup attack graph
@@ -400,56 +401,72 @@ def main_fgsm_attack(all_images_target_class):
 
 
 
-def main_optimization_attack(all_images_target_class):
+def main_optimization_attack(all_images_target_class, is_targeted):
   """ Executes optimization-based attack against input images.
   """
   eps = 2.0 * FLAGS.max_epsilon / 255.0
   batch_shape = [FLAGS.batch_size, FLAGS.image_height, FLAGS.image_width, 3]
-  #batch_shape = [1, FLAGS.image_height, FLAGS.image_width, 3]
-
-  # Assume ~3 seconds per image.
-  # This is conservative, but we have no idea how long it takes our code to 
-  # setup on their cloud due to the lack of visibility.
-  #
-  secs_per_image = 3.0
-  t_max_batch = secs_per_image * len(all_images_target_class) / batch_shape[0]
 
   tic = time.time()
 
   with tf.Graph().as_default():
     with tf.Session() as sess:
-      # select network(s) to attack
-      network1 = classifiers.InceptionV3('InceptionV3', './Weights/inception_v3.ckpt')
-      network2 = classifiers.AdvResnetV2InceptionV3('InceptionResnetV2', './ens_adv_inception_resnet_v2/ens_adv_inception_resnet_v2.ckpt')
-      network3 = classifiers.InceptionV3('Adv-InceptionV3', './Weights/InceptionV3-adv.ckpt')
-      network4 = classifiers.ResnetV2('resnet_v2_101', './Weights/resnet_v2_101.ckpt')
 
       # for now we attack one big graph; in the future, could attack each network
       # separately and then aggregate.
-      #f_logit = lambda x: .25 * network1._prediction_graph_output(x, pre_softmax=True) + \
-      #                    .50 * network2._prediction_graph_output(x, pre_softmax=True) + \
-      #                    .25 * network3._prediction_graph_output(x, pre_softmax=True)
-      
-      f_logit = lambda x: .20 * network1._prediction_graph_output(x, pre_softmax=True) + \
-                          .40 * network2._prediction_graph_output(x, pre_softmax=True) + \
-                          .20 * network3._prediction_graph_output(x, pre_softmax=True) + \
-                          .20 * network4._prediction_graph_output(x, pre_softmax=True) 
-      all_networks = [network1, network2, network3,network4]
-
+      #
+      # NOTE: if we had a larger time budget, attacking the noisy networks can provide some
+      #       robustness to additive Gaussian noise defense.  However, if time is very
+      #       limited (as we anticipate) then attacking noisy networks slows down our 
+      #       convergence vs. clean networks which is probably not worth the trade given
+      #       we don't know how many will be playing Gaussian noise defense.
+      #
+      # 
+      #f_logit = lambda x: .20 * NOISY_NETWORKS[0]._prediction_graph_output(x, pre_softmax=True) + \
+      #                    .20 * NOISY_NETWORKS[1]._prediction_graph_output(x, pre_softmax=True) + \
+      #                    .20 * NOISY_NETWORKS[2]._prediction_graph_output(x, pre_softmax=True) + \
+      #                    .40 * NOISY_NETWORKS[3]._prediction_graph_output(x, pre_softmax=True)
+      f_logit = lambda x: .20 * NETWORKS[0]._prediction_graph_output(x, pre_softmax=True) + \
+                          .20 * NETWORKS[2]._prediction_graph_output(x, pre_softmax=True) + \
+                          .60 * NETWORKS[3]._prediction_graph_output(x, pre_softmax=True)
 
       # construct attack graph
-      opts = eia.AttackOptions(learn_rate=eps/10., tau=eps, c=0.1, t_max=t_max_batch, sigma=0.0, n_restarts=1)
-      attacker = eia.AdamAttack(opts, f_logit, batch_shape)
+      # NOTE: will correct t_max later/below.
+      #
+      opts = eia.AttackOptions(learn_rate=eps/10., tau=eps, c=0.1, t_max=.5, sigma=0.0, n_restarts=1)
+      attacker = eia.AdamAttack(opts, f_logit, batch_shape, is_targeted)
 
       # load model weights (now that graph exists)
-      saver1 = tf.train.Saver(slim.get_model_variables(scope=network1._scope))
-      saver1.restore(sess, network1._weights_file)
-      saver2 = tf.train.Saver(slim.get_model_variables(scope=network2._scope))
-      saver2.restore(sess, network2._weights_file)
-      saver3 = tf.train.Saver(slim.get_model_variables(scope=network3._scope))
-      saver3.restore(sess, network3._weights_file)
-      saver4 = tf.train.Saver(slim.get_model_variables(scope=network4._scope))
-      saver4.restore(sess, network4._weights_file)
+      # need to keep this in sync with f_logit...
+      #for n_id in [0,1,2,3]:
+      for n_id in [0,2,3]:
+        saver = tf.train.Saver(slim.get_model_variables(scope=NETWORKS[n_id]._scope))
+        saver.restore(sess, NETWORKS[n_id]._weights_file)
+
+      # run one pass just to get things warmed up (first iteration usually seems slower...)
+      for filenames, images in load_images(FLAGS.input_dir, batch_shape):
+        _ = attacker.attack(sess, images, np.array([100,] * images.shape[0], np.float32))
+        break
+
+      # estimate how much time we have left
+      # total time is 500s; we shave some of that off to be safe
+      NET_TIME = 500.0
+      elapsed = (time.time() - GLOBAL_START_TIME)
+      est_time_remaining = (NET_TIME - 19) - elapsed 
+
+      # *** WARNING WARNING WARNING ***
+      #   Based on cleverhans codes, it seems the list of target labels may be larger than 100!! 
+      #   So, do NOT base time calculation on size of that list!!!
+      # *** WARNING WARNING WARNING ***
+      #n_batches = int(np.ceil(1.0 * len(all_images_target_class) / batch_shape[0]))
+      #secs_per_batch = est_time_remaining / n_batches 
+      n_batches = int(np.ceil(100.0 / batch_shape[0]))
+      secs_per_batch = est_time_remaining / n_batches
+
+      opts2 = eia.AttackOptions(t_max=secs_per_batch, 
+          learn_rate=opts.learn_rate, tau=opts.tau, c=opts.c, sigma=opts.sigma, n_restarts=opts.n_restarts)
+      attacker.opts = opts2
+      print('[info]: elapsed: %0.2f sec.; remaining: %0.2f; # batches: %d; using %0.2f sec/batch' % (elapsed, est_time_remaining, n_batches, secs_per_batch))
 
       # run the attack
       total_cnt = 0
@@ -470,7 +487,8 @@ def main_optimization_attack(all_images_target_class):
         save_images(x_adv, filenames, FLAGS.output_dir)
 
         total_cnt += len(filenames)
-        print('[info]: processed %d in %d seconds' % (total_cnt, time.time()-tic))
+        print('[info]: processed %d images; net runtime %0.2f' % (total_cnt, time.time() - GLOBAL_START_TIME))
+
 
 
 def main(_):
@@ -483,26 +501,31 @@ def main(_):
 
   if all_images_target_class is None:
     print('[INFO]: this is a NON-TARGETED attack with tau=%d' % FLAGS.max_epsilon)
-    # goal is to push estimate away from that of original/clean prediction
-    #all_images_target_class = {files_0[ii] : y_hat_0[ii] for ii in range(len(files_0))}
-    #alpha *= -1  # descent in the opposite direction
-    #is_targeted = False
 
-    # UPDATE: for an ensemble, try a heuristic of randomly choosing a target class for each image
-    print('[INFO]: converting NON-TARGETED into a TARGETED attack...')
-    files_0 = _all_image_names(FLAGS.input_dir)
-    all_images_target_class = {files_0[ii] : np.random.choice(1000) + 1 for ii in range(len(files_0))}
-    is_targeted = True
+    if False:
+      # Heuristic 1: push estimate away from that of original/clean prediction
+      files_0, y_hat_0 = NETWORKS[0].predict_all_images(FLAGS.input_dir)
+      y_hat_0 = np.argmax(y_hat_0, axis=1)
+      all_images_target_class = {files_0[ii] : y_hat_0[ii] for ii in range(len(files_0))}
+      is_targeted = False
+    else:
+      # Heuristic 2: randomly select a class and do targeted attack
+      # For an ensemble of networks, this empirically seems to work better in some cases.
+      print('[INFO]: converting NON-TARGETED into a TARGETED attack...')
+      files_0 = _all_image_names(FLAGS.input_dir)
+      all_images_target_class = {files_0[ii] : np.random.choice(1000) + 1 for ii in range(len(files_0))}
+      is_targeted = True
+
   else:
-    print('[INFO]: this is a TARGETED attack with tau=%d' % FLAGS.max_epsilon)
+    print('[INFO]: this is a TARGETED attack with tau=%d, # targets: %d' % (FLAGS.max_epsilon, len(all_images_target_class)))
     is_targeted = True 
 
 
   #--------------------------------------------------
   # launch desired attack
   #--------------------------------------------------
-  main_optimization_attack(all_images_target_class)
-  #main_fgsm_attack(all_images_target_class)
+  main_optimization_attack(all_images_target_class, is_targeted)
+  #main_fgsm_attack(all_images_target_class, is_targeted)
 
 
   #--------------------------------------------------
@@ -510,18 +533,21 @@ def main(_):
   #--------------------------------------------------
   if FLAGS.debug:
     # predictions on clean data
-    baseline_model = classifiers.InceptionV3('InceptionV3', './Weights/inception_v3.ckpt')
-    files_0, y_hat_0 = baseline_model.predict_all_images(FLAGS.input_dir)
+    files_0, y_hat_0 = NETWORKS[0].predict_all_images(FLAGS.input_dir)
     y_hat_0 = np.argmax(y_hat_0, axis=1)
     clean_predictions = { files_0[ii] : y_hat_0[ii] for ii in range(len(files_0))}
 
     # compare to AE predictions
     if is_targeted:
-      analyze_attacks(clean_predictions, all_images_target_class)
+      analyze_attacks(NETWORKS, clean_predictions, all_images_target_class)
+      analyze_attacks(VERY_NOISY_NETWORKS, clean_predictions, all_images_target_class)
     else:
-      analyze_attacks(clean_predictions)
+      analyze_attacks(NETWORKS, clean_predictions)
+      analyze_attacks(VERY_NOISY_NETWORKS, clean_predictions)
 
+  print('[info]: Done! Total runtime: %0.2f (secs)' % (time.time() - GLOBAL_START_TIME))
 
 
 if __name__ == '__main__':
+  GLOBAL_START_TIME = time.time()
   tf.app.run()

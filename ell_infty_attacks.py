@@ -53,11 +53,12 @@ class AdamAttack:
 
     self._shape = shape # [1, 299, 299, 3]
     self._num_classes = 1001
+    self._is_targeted = is_targeted
 
-    self._init_graph(f_logit, is_targeted)
+    self._init_graph(f_logit)
 
 
-  def _init_graph(self, f_logit, is_targeted):
+  def _init_graph(self, f_logit):
     shape = self._shape
 
     #----------------------------------------------------------------------------
@@ -86,13 +87,17 @@ class AdamAttack:
     x_prime = tf.tanh(x_0 + w)                             # AE in (-1,1)^d
     F_x_prime = f_logit(x_prime)                           # F(x_prime) in notation of [car2017]
 
+    nabla_x = tf.gradients(F_x_prime, x_prime)[0]          # UPDATE: to support fast initial condition
+
     y_tgt = tf.one_hot(self.y_tgt_ph, self._num_classes)
     z_tgt = tf.reduce_sum(y_tgt * F_x_prime)               # response for the target class (recall y_tgt is onehot)
-    if is_targeted:
+    if self._is_targeted:
+        print('[AdamAttack]: using TARGETED loss function')
         # here we make z_tgt greater than largest response from rest of field
         z_other = tf.reduce_max((1.0 - y_tgt) * F_x_prime) # largest non-target response
         loss_label = (z_other - z_tgt)                 
     else:
+        print('[AdamAttack]: using NON-TARGETED loss function')
         # here we make z_tgt smaller than mean response from rest of field
         z_other = tf.reduce_mean((1.0 - y_tgt) * F_x_prime)  # mean response from all other classes
         loss_label = (z_tgt - z_other)                
@@ -162,6 +167,20 @@ class AdamAttack:
               self.y_tgt_ph : y_tgt,
               self.tau_ph : self.opts.tau,
               self.c_ph : self.opts.c}
+
+
+    # UPDATE: trying FGS as initial condition
+    #         Quick experimentation suggests that stepping by a full tau is detrimental.
+    #         A smaller step seemed minimally helpful at low # of iterations.
+    #         For a reasonable time allotment, I would discard this; however, since we
+    #         anticipate extremely limited computational resources, we'll keep it for now.
+    #
+    if self._is_targeted:
+      print('[attack]: WARNING: using FGS initial condition...')
+      nabla_x = sess.run([self._x_prime], feed_dict=inputs)[0]
+      x_0_fgs = x_orig - (self.opts.tau / 3.0) * np.sign(nabla_x)
+      x_0_fgs = np.clip(x_0_fgs, -0.99999, 0.99999)
+      inputs[self.x_0_ph] = np.arctanh(x_0_fgs)
 
     # train for as long as time permits
     tic = time.time() 

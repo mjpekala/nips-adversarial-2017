@@ -42,6 +42,6 @@ if __name__ == "__main__":
 
 
   with open(os.path.join(test_dir_2, 'target_class.csv'), 'w') as f:
-    for key, value in target_dict.iteritems():
-      f.write('%s, %d\n' % (key, value))
+    for key in target_dict:
+      f.write('%s, %d\n' % (key, target_dict[key]))
 

@@ -137,10 +137,45 @@ def check_baseline_agreement():
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+def _trivial_defense():
+  """ Computes an average estimate across noisy image instances.
+
+  The hope is that, on balance, variations in the input and in the 
+  model uses will defeat simple adversarial attacks.  
+
+  This strategy is not sound for strong attacks; however, for the 
+  competition there doesn't seem to be adequate time to mount a strong attack.
+  """
+  print('[trivial-defense]: will evaluate images in: "%s"' % FLAGS.input_dir)
+  print('[trivial-defense]: writing output to:       "%s"' % FLAGS.output_file)
+
+  net1 = classifiers.AdvResnetV2InceptionV3(sigma=.13)
+  net2 = classifiers.InceptionV4(sigma=.13)
+
+  files1, pred1 = net1.predict_all_images(FLAGS.input_dir, 15)
+  files2, pred2 = net2.predict_all_images(FLAGS.input_dir, 15)
+
+  net_pred = (pred1 + pred2) / 2.0
+
+  # save to file
+  y_hat = np.argmax(net_pred, axis=1)
+  with tf.gfile.Open(FLAGS.output_file, 'w') as out_file:
+    for ii in range(len(files1)): 
+      out_file.write('{0},{1}\n'.format(files1[ii], y_hat[ii]))
+
+  print('[trivial-defense]: total elapsed time: %0.2f' % (time.time() - GLOBAL_START_TIME))
+
 
 def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
   tic = time.time()
+
+  #
+  # NOTE: using a simple defense for now; seems to work ok vs weak attacks
+  #
+  _trivial_defense() 
+  return 
+
 
   print('[INFO]: will evaluate images in: "%s"' % FLAGS.input_dir)
   print('[INFO]: writing output to:       "%s"' % FLAGS.output_file)
@@ -208,4 +243,5 @@ def main(_):
 
 
 if __name__ == '__main__':
+  GLOBAL_START_TIME = time.time()
   tf.app.run()

@@ -50,7 +50,6 @@ def rename(checkpoint_old, scope_old, checkpoint_new, scope_new):
       new_vars = []
       for name, shape in tf_vars:
         v = tf.contrib.framework.load_variable(checkpoint_old, name)
-        print(v.shape) # TEMP
         new_vars.append(tf.Variable(v, name=name.replace(scope_old, scope_new)))
 
       print('example new variable:', new_vars[0])

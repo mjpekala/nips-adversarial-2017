@@ -22,9 +22,9 @@ LOCAL_DATA=./NIPS_1000
 # The rest of this file should be system-independent
 #-------------------------------------------------------------------------------
 
-TARGETED_ZIP_FILE=targeted-iter-gd-ens.zip
-ATTACK_ZIP_FILE=non-targeted-iter-gd-ens.zip
-DEFENSE_ZIP_FILE=defense.zip
+TARGETED_ZIP_FILE=targeted-ae.zip
+ATTACK_ZIP_FILE=non-targeted-ae.zip
+DEFENSE_ZIP_FILE=defense-ae.zip
 
 # perturbation size, in \ell_\infty
 TAU=16
@@ -42,12 +42,14 @@ $(LOCAL_DATA) :
 
 demo-attack : $(LOCAL_DATA)
 	\rm -rf ./Output_Attack && mkdir -p ./Output_Attack 
-	time ./run_attack.sh $(LOCAL_DATA)/Test ./Output_Attack $(TAU)
+	python attack_iter_target_class.py --input_dir=$(LOCAL_DATA)/Test --output_dir=./Output_Attack --max_epsilon=$(TAU) --debug=1
+	#time ./run_attack.sh $(LOCAL_DATA)/Test ./Output_Attack $(TAU)
 
 
 demo-targeted : $(LOCAL_DATA)
 	\rm -rf ./Output_Targeted && mkdir -p ./Output_Targeted 
-	time ./run_attack.sh $(LOCAL_DATA)/Test_Targeted ./Output_Targeted $(TAU)
+	python attack_iter_target_class.py --input_dir=$(LOCAL_DATA)/Test_Targeted --output_dir=./Output_Targeted --max_epsilon=$(TAU) --debug=1
+	#time ./run_attack.sh $(LOCAL_DATA)/Test_Targeted ./Output_Targeted $(TAU)
 
 
 # run this 1x before running demo-defense
@@ -58,7 +60,7 @@ baseline-defense :
 
 # run an untargeted attack first (to create ./Output_Attack)
 demo-defense : ./Output_Attack
-	time ./run_defense.sh ./Output_Attack 
+	time ./run_defense.sh ./Output_Attack vs_attack.csv
 
 
 
@@ -72,19 +74,22 @@ zip : zip-targeted zip-attack zip-defense
 zip-targeted :
 	\rm -f $(TARGETED_ZIP_FILE) 
 	cp metadata.targeted metadata.json
-	zip $(TARGETED_ZIP_FILE) Makefile metadata.json run_attack.sh ./*.py ./Weights/* ./ens_adv_inception_resnet_v2/*
+	(date & hostname) > timestamp.txt
+	zip $(TARGETED_ZIP_FILE) Makefile README.md timestamp.txt metadata.json run_attack.sh ./*.py ./Weights/* ./models/*.py
 	\rm -f metadata.json
 
 zip-attack :
 	\rm -f $(ATTACK_ZIP_FILE) 
 	cp metadata.non-targeted metadata.json
-	zip $(ATTACK_ZIP_FILE) Makefile metadata.json run_attack.sh ./*.py ./Weights/* ./ens_adv_inception_resnet_v2/*
+	(date  & hostname) > timestamp.txt
+	zip $(ATTACK_ZIP_FILE) Makefile README.md timestamp.txt metadata.json run_attack.sh ./*.py ./Weights/* ./models/*.py
 	\rm -f metadata.json
 
 zip-defense :
 	\rm -f $(DEFENSE_ZIP_FILE) 
 	cp metadata.defense metadata.json
-	zip $(DEFENSE_ZIP_FILE) Makefile metadata.json run_defense.sh ./*.py ./Weights/* ./ens_adv_inception_resnet_v2/* ./Baselines/*.npy
+	(date  & hostname) > timestamp.txt
+	zip $(DEFENSE_ZIP_FILE) Makefile README.md timestamp.txt metadata.json run_defense.sh ./*.py ./Weights/* ./models/*.py ./Baselines/*.npy
 	\rm -f metadata.json
 
 
