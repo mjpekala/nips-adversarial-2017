@@ -9,7 +9,7 @@ Note this software represents joint work by Mike Pekala, Neil Fendley and I-Jeng
 
 See the Makefile for examples of how to run things.  Note that this repo houses the code for all three contests (attack, targeted-attack, and defense).
 
-Before running, you will have to download the associated checkpoint files and place them in the Weights directory.  You will also have to convert the namespace for the adversarially trained inceptionV3 weights (which was provided by competition organizers) so that it does not clash with the namespace of "vanilla" inceptionV3.  
+Before running, you will have to download the necessary checkpoint files and place them in the *Weights* directory.  You will also have to convert the namespace for the adversarially trained inceptionV3 weights (which was provided by competition organizers) so that it does not clash with the namespace of "vanilla" inceptionV3.  See *tf_rename_vars.py*.
 
 
 ## Brief Discussion
