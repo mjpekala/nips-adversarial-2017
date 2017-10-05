@@ -1,6 +1,10 @@
 # nips-adversarial-2017
 
-Codes for the NIPS 2017 adversarial example competition.
+Codes for the NIPS 2017 adversarial example competitions:
+
+1.  [Non-targeted AE](https://www.kaggle.com/c/nips-2017-non-targeted-adversarial-attack)
+2.  [Targeted AE](https://www.kaggle.com/c/nips-2017-targeted-adversarial-attack)
+3.  [AE Defense](https://www.kaggle.com/c/nips-2017-defense-against-adversarial-attack)
 
 This software represents joint work by Mike Pekala, Neil Fendley and I-Jeng Wang.
 
