@@ -1,6 +1,6 @@
 # nips-adversarial-2017
 
-Codes for the NIPS 2017 adversarial example competitions:
+Codes for the NIPS 2017 adversarial example (AE) competitions:
 
 1.  [Non-targeted AE](https://www.kaggle.com/c/nips-2017-non-targeted-adversarial-attack)
 2.  [Targeted AE](https://www.kaggle.com/c/nips-2017-targeted-adversarial-attack)
