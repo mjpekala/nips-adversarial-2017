@@ -14,10 +14,17 @@ Before running, you will have to download the necessary checkpoint files and pla
 
 ## Brief Discussion
 
-On the attack side, this code is nothing more than a straightforward ensemble attack against the three networks known to be included as baselines (and potentially as part of some defenses).  The untargeted attack is just a targeted attack against randomly selected labels.  This is not a particular sophisticated or interesting approach; however, it was used because (a) of the stringent time requirement which precluded more computationally expensive methods and (b) we were very short on development/calendar time at the end due to some issues with our original (keras-based) approach.
-There is some strategy involved in balancing which networks to put in the ensemble; more models (or attacking models equipped with Gaussian noise) slow down convergence to a solution.  Ultimately, the uncertainty in evaluation platform runtime and the "no box" nature of the defense led to this very conservative approach.    With more runtime I would have at least included some of the noisy models in the attack, and probably a few other networks (all of which can be done easily with the existing code).
+### Attacks
+These consist of a straightforward ensemble attack against the three networks known to be included as baselines (and potentially as part of some defenses): inceptionV3 and the two adversarially trained networks provided by the competition organizers.  The untargeted attack is just a targeted attack against randomly selected labels (which empirically seemed to work better than our untargeted loss function when the target is an ensemble).  This is not a particularly sophisticated or interesting approach; however, it was used because 
 
-On the defense side, we use a simple two model ensemble with some additive Gaussian noise.  Again, this was not the approach we originally envisioned or implemented; the aforementioned time constraints led us to set aside our more ambitious program for something modest that should hopefully run in the time required and work well enough against weak attacks.
+1. the stringent time requirement precluded more computationally expensive methods and 
+2. we were very short on development/calendar time at the end due to some issues with our original (keras-based) approach.
+
+There is some strategy involved in selecting which networks to put in the ensemble and how to weight them; more models (or attacking models equipped with additional capabilities, such as Gaussian noise) slow down convergence to a solution.  Ultimately, the uncertainty in evaluation platform runtime and the "no box" nature of the defenses led to employ this very conservative approach.    With more runtime I would have at least included some of the noisy models in the attack (which, based on limited experiments, do indeed seem to make progress against this type of defense given enough GPU time), and also additional networks.  All of these can be done with the code included here.
+
+
+### Defense
+On the defense side, we use a simple two model ensemble with additive Gaussian noise; again, this is neither novel nor particularly interesting.  This was not the approach we originally envisioned (or implemented); however, the aforementioned time constraints led us to set aside our more ambitious program for something modest that should (hopefully) run in the time required and work well enough against attacks that do not generalize well.
 
 
 ## Disclaimers
